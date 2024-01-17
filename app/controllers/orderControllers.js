@@ -1,4 +1,5 @@
 import Order from '../models/orderModel.js';
+import Products from '../models/productsModel.js';
 import { user1 } from '../models/userModels.js';
 
 const orderControllers = {
@@ -28,6 +29,8 @@ const orderControllers = {
     newOrder.totalAmount = items.reduce(
       (acc, item) => acc + Products.find((product) => product.id === item).price
     );
+
+    user1.orderHistory.push(newOrder);
 
     res.json({
       message: 'Success create order',
