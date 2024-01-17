@@ -32,12 +32,45 @@ const cartControllers = {
     }
 
     Cart.items.push(product);
-    Cart.totalItems++;
+    Cart.totalItems = Cart.items.length;
     Cart.totalAmount = Cart.totalAmount + product.price;
     res.json({
       message: 'Success add to cart',
       data: product,
     });
+  },
+
+  removeitem: (req, res) => {
+    try {
+      const productId = req.body.productId;
+
+      if (typeof productId !== 'number') {
+        return res.status(422).json({
+          message: 'Fail add to cart. Cannot process the data',
+        });
+      }
+
+      const productIndex = Cart.items.findIndex(
+        (product) => product.id === productId
+      );
+
+      if (productIndex === -1) {
+        return res.status(404).json({
+          message: 'Fail remove from cart. Product not found',
+        });
+      }
+
+      Cart.totalAmount = Cart.totalAmount - Cart.items[productIndex].price;
+      Cart.items.splice(productIndex, 1);
+      Cart.totalItems = Cart.items.length;
+      res.json({
+        message: `Product ID: ${productId} removed from the cart`,
+      });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: 'Internal server error', error: error.message });
+    }
   },
 };
 
