@@ -8,6 +8,6 @@ const { getOrdersHistory, createOrder, checkoutOrder, cancelOrder } =
 router.get('/', getOrdersHistory);
 router.post('/create', createOrder);
 router.post('/checkout', checkoutOrder);
-router.delete('/delete', cancelOrder);
+router.delete('/cancel', cancelOrder);
 
 export default router;
