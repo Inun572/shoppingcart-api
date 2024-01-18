@@ -1,5 +1,6 @@
 import Cart from '../models/cartModel.js';
 import Products from '../models/productsModel.js';
+import { recalculateTotals } from '../services/cartServices.js';
 
 const cartControllers = {
   getCart: (req, res) => {
@@ -10,10 +11,17 @@ const cartControllers = {
   },
   addItem: (req, res) => {
     const productId = req.body.productId;
+    const quantity = req.body.quantity;
 
-    if (typeof productId !== 'number') {
+    if (!productId || !quantity) {
+      return res.status(400).json({
+        message: 'Fail add to cart. Please provide productId and quantity',
+      });
+    }
+
+    if (typeof productId !== 'number' || typeof quantity !== 'number') {
       return res.status(422).json({
-        message: 'Fail add to cart. Cannot process the data',
+        message: 'Fail add to cart. Invalid data type',
       });
     }
 
@@ -31,12 +39,30 @@ const cartControllers = {
       });
     }
 
-    Cart.items.push(product);
-    Cart.totalItems = Cart.items.length;
-    Cart.totalAmount = Cart.totalAmount + product.price;
+    const indexItemInCart = Cart.items.findIndex(
+      (item) => item.product.id === productId
+    );
+    if (indexItemInCart !== -1) {
+      Cart.items[indexItemInCart].quantity += quantity;
+      recalculateTotals(Cart);
+
+      return res.json({
+        message: 'Success update quantity to cart',
+        data: {
+          product,
+          quantity: Cart.items[indexItemInCart].quantity,
+        },
+      });
+    }
+
+    Cart.items.push({ product, quantity });
+    recalculateTotals(Cart);
     res.json({
       message: 'Success add to cart',
-      data: product,
+      data: {
+        product,
+        quantity,
+      },
     });
   },
 
@@ -51,7 +77,7 @@ const cartControllers = {
       }
 
       const productIndex = Cart.items.findIndex(
-        (product) => product.id === productId
+        (product) => product.product.id === productId
       );
 
       if (productIndex === -1) {
@@ -60,11 +86,11 @@ const cartControllers = {
         });
       }
 
-      Cart.totalAmount = Cart.totalAmount - Cart.items[productIndex].price;
       Cart.items.splice(productIndex, 1);
-      Cart.totalItems = Cart.items.length;
+      recalculateTotals(Cart);
+
       res.json({
-        message: `Product ID: ${productId} removed from the cart`,
+        message: `Success remove item from the cart`,
       });
     } catch (error) {
       return res
