@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 
 app.use((err, req, res, next) => {
-  res.status(400).json({ message: `You fucked up. ${err.message}` });
+  res.status(400).json({ message: `You fucked up 🤡. ${err.message}` });
 });
 
 app.use(router);
