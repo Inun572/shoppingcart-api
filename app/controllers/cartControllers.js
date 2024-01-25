@@ -1,101 +1,152 @@
-import Cart from '../models/cartModel.js';
-import Products from '../models/productsModel.js';
-import { recalculateTotals } from '../services/cartServices.js';
+import {
+  addItem,
+  deleteItem,
+  emptyCart,
+  getCart,
+  getItemInCart,
+  recalculateTotals,
+  updateItem,
+} from '../services/cartServices.js';
+import { getProductById } from '../services/productServices.js';
 
 const cartControllers = {
-  getCart: (req, res) => {
-    res.json({
-      message: 'Getting items cart successfully',
-      data: Cart,
-    });
-  },
-  addItem: (req, res) => {
-    const productId = req.body.productId;
-    const quantity = req.body.quantity;
-
-    if (!productId || !quantity) {
-      return res.status(400).json({
-        message: 'Fail add to cart. Please provide productId and quantity',
-      });
-    }
-
-    if (typeof productId !== 'number' || typeof quantity !== 'number') {
-      return res.status(422).json({
-        message: 'Fail add to cart. Invalid data type',
-      });
-    }
-
-    const product = Products.find((product) => product.id === productId);
-
-    if (!product) {
-      return res.status(404).json({
-        message: 'Fail add to cart. Product not found',
-      });
-    }
-
-    if (!product.inStock) {
-      return res.status(400).json({
-        message: 'Fail add to cart. Item out of stock',
-      });
-    }
-
-    const indexItemInCart = Cart.items.findIndex(
-      (item) => item.product.id === productId
-    );
-    if (indexItemInCart !== -1) {
-      Cart.items[indexItemInCart].quantity += quantity;
-      recalculateTotals(Cart);
-
-      return res.json({
-        message: 'Success update quantity to cart',
-        data: {
-          product,
-          quantity: Cart.items[indexItemInCart].quantity,
-        },
-      });
-    }
-
-    Cart.items.push({ product, quantity });
-    recalculateTotals(Cart);
-    res.json({
-      message: 'Success add to cart',
-      data: {
-        product,
-        quantity,
-      },
-    });
-  },
-
-  removeitem: (req, res) => {
+  getCart: async (req, res) => {
     try {
-      const productId = req.body.productId;
-
-      if (typeof productId !== 'number') {
-        return res.status(422).json({
-          message: 'Fail add to cart. Cannot process the data',
+      const data = await getCart();
+      if (data.length === 0) {
+        return res.json({
+          message: 'Cart is empty',
         });
       }
 
-      const productIndex = Cart.items.findIndex(
-        (product) => product.product.id === productId
-      );
-
-      if (productIndex === -1) {
-        return res.status(404).json({
-          message: 'Fail remove from cart. Product not found',
-        });
-      }
-
-      Cart.items.splice(productIndex, 1);
-      recalculateTotals(Cart);
+      let cartTotal = 0;
+      data.forEach((item) => {
+        cartTotal = cartTotal + item.total;
+      });
 
       res.json({
-        message: `Success remove item from the cart`,
+        message: 'Success get cart',
+        data: {
+          items: data,
+          cart_total: Number(cartTotal.toFixed(2)),
+        },
       });
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ message: 'Internal server error', error: error.message });
+    } catch (err) {
+      res.json({
+        message: 'Internal server error',
+        error: err.message,
+      });
+    }
+  },
+  addItem: async (req, res) => {
+    try {
+      const { productId, quantity } = req.body;
+
+      if (!productId || !quantity) {
+        return res.status(400).json({
+          message: 'Please provide product id and quantity',
+        });
+      }
+
+      if (
+        typeof productId !== 'number' ||
+        typeof quantity !== 'number'
+      ) {
+        return res.status(400).json({
+          message: 'Invalid product id and quantity',
+        });
+      }
+
+      const isExist = await getProductById(productId);
+
+      if (!isExist) {
+        return res.status(404).json({
+          message: 'Product not found',
+        });
+      }
+
+      if (isExist.in_stock === 0) {
+        return res.status(400).json({
+          message: 'Product is out of stock',
+        });
+      }
+
+      const isInCart = await getItemInCart(productId);
+
+      if (isInCart) {
+        const newQuantity = isInCart.quantity + quantity;
+        const data = await updateItem(
+          isInCart,
+          newQuantity
+        );
+
+        return res.json({
+          message: 'Success update item in cart',
+          data,
+        });
+      } else {
+        const data = await addItem(isExist, quantity);
+
+        res.json({
+          message: 'Success add item in cart',
+          data,
+        });
+      }
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Internal server error',
+        error: err.message,
+      });
+    }
+  },
+  removeItem: async (req, res) => {
+    try {
+      const productId = Number(req.params.id);
+
+      if (!productId) {
+        return res.status(400).json({
+          message: 'Please provide product id',
+        });
+      }
+
+      if (isNaN(productId)) {
+        return res.status(400).json({
+          message: 'Invalid product id',
+        });
+      }
+
+      const isExist = await getItemInCart(productId);
+
+      if (!isExist) {
+        return res.status(404).json({
+          message: 'Item not found in cart',
+        });
+      }
+
+      const data = await deleteItem(productId);
+
+      res.json({
+        message: 'Success remove item from cart',
+        data,
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: 'Internal server error',
+        error: err.message,
+      });
+    }
+  },
+  emptyCart: async (req, res) => {
+    try {
+      await emptyCart();
+      res.json({
+        message: 'Success empty cart',
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: 'Internal server error',
+        error: err.message,
+      });
     }
   },
 };
