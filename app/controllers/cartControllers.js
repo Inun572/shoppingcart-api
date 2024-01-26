@@ -41,7 +41,6 @@ const cartControllers = {
   addItem: async (req, res) => {
     try {
       const { productId, quantity } = req.body;
-
       if (!productId || !quantity) {
         return res.status(400).json({
           message: 'Please provide product id and quantity',
@@ -72,13 +71,9 @@ const cartControllers = {
       }
 
       const isInCart = await getItemInCart(productId);
-
       if (isInCart) {
         const newQuantity = isInCart.quantity + quantity;
-        const data = await updateItem(
-          isInCart,
-          newQuantity
-        );
+        const data = await updateItem(isExist, newQuantity);
 
         return res.json({
           message: 'Success update item in cart',

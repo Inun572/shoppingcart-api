@@ -1,107 +1,87 @@
-import Order from '../models/orderModel.js';
-import Products from '../models/productsModel.js';
-import { user1 } from '../models/userModels.js';
+import {
+  emptyCart,
+  getCart,
+} from '../services/cartServices.js';
+import {
+  createOrder,
+  getOrderById,
+  getOrders,
+} from '../services/orderServices.js';
 
 const orderControllers = {
-  getOrdersHistory: (req, res) => {
-    res.json({
-      message: 'Get orders history successfully',
-      data: user1.orderHistory,
-    });
+  getOrders: async (req, res) => {
+    try {
+      const orderId = Number(req.params.id);
+
+      if (orderId) {
+        if (isNaN(orderId)) {
+          return res.status(400).json({
+            message: 'Invalid order id',
+          });
+        }
+
+        const data = await getOrderById(orderId);
+
+        if (!data) {
+          return res.status(404).json({
+            message: 'Order not found',
+          });
+        }
+
+        res.json({
+          message: 'Success get order',
+          data,
+        });
+      } else {
+        const data = await getOrders();
+
+        if (data.length === 0) {
+          return res.status(404).json({
+            message: 'Orders is empty',
+          });
+        }
+
+        res.json({
+          message: 'Success get orders',
+          data,
+        });
+      }
+    } catch (err) {
+      res.status(500).json({
+        message: 'Internal server error',
+        error: err.message,
+      });
+    }
   },
-  createOrder: (req, res) => {
-    const items = req.body.items; // Item is an array of product id
+  createOrder: async (req, res) => {
+    try {
+      const cartItem = await getCart();
+      const orderDate = new Date();
 
-    if (items.length === 0) {
-      return res.status(400).json({
-        message: 'Fail create order. Input at least 1 item.',
+      const orderNumber = 'ORD-' + Date.now();
+      const total = cartItem.reduce((total, item) => {
+        return total + item.total;
+      }, 0);
+      const data = await createOrder(
+        orderDate,
+        orderNumber,
+        total
+      );
+
+      if (data.affectedRows !== 0) {
+        await emptyCart();
+      }
+
+      res.json({
+        message: 'Success create order',
+        data,
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: 'Internal server error',
+        error: err.message,
       });
     }
-
-    if (Products.includes(items)) {
-      return res.status(400).json({
-        message: 'Fail create order. There is invalid item(s).',
-      });
-    }
-
-    const newOrder = new Order();
-    newOrder.items = items;
-    newOrder.totalAmount = items.reduce(
-      (acc, item) => acc + Products.find((product) => product.id === item).price
-    );
-
-    user1.orderHistory.push(newOrder);
-
-    res.json({
-      message: 'Success create order',
-      data: newOrder,
-    });
-  },
-  checkoutOrder: (req, res) => {
-    const orderId = req.body.orderId;
-
-    if (!orderId) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Input order id.',
-      });
-    }
-
-    const orderIndex = user1.orderHistory.findIndex(
-      (order) => order.orderId === orderId
-    );
-
-    if (orderIndex === -1) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Invalid order id.',
-      });
-    }
-
-    const order = user1.orderHistory[orderIndex];
-
-    if (order.isPaid || order.isCanceled) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Order already paid or canceled.',
-      });
-    }
-
-    order.isPaid = true;
-    res.json({
-      message: `Success checkout orderId : ${orderId}`,
-      data: order,
-    });
-  },
-  cancelOrder: (req, res) => {
-    const orderId = req.body.orderId;
-
-    if (!orderId) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Input order id.',
-      });
-    }
-
-    const orderIndex = user1.orderHistory.findIndex(
-      (order) => order.orderId === orderId
-    );
-
-    if (orderIndex === -1) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Invalid order id.',
-      });
-    }
-
-    const order = user1.orderHistory[orderIndex];
-
-    if (order.isPaid || order.isCanceled) {
-      return res.status(400).json({
-        message: 'Fail checkout order. Order already paid or canceled.',
-      });
-    }
-
-    order.isCanceled = true;
-    res.json({
-      message: `Success cancel orderId : ${orderId}`,
-      data: order,
-    });
   },
 };
 

@@ -2,12 +2,15 @@ import { Router } from 'express';
 import orderControllers from '../controllers/orderControllers.js';
 
 const router = Router();
-const { getOrdersHistory, createOrder, checkoutOrder, cancelOrder } =
-  orderControllers;
+const {
+  getOrders,
+  createOrder,
+  checkoutOrder,
+  cancelOrder,
+} = orderControllers;
 
-router.get('/', getOrdersHistory);
-router.post('/create', createOrder);
-router.post('/checkout', checkoutOrder);
-router.delete('/cancel', cancelOrder);
+router.get('/', getOrders);
+router.get('/:id', getOrders);
+router.post('/', createOrder);
 
 export default router;
