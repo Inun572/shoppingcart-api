@@ -20,3 +20,24 @@ export const createOrder = async (date, number, total) => {
   );
   return data;
 };
+
+export const insertOrderItem = async (
+  orderId,
+  cartItem
+) => {
+  const query = `INSERT INTO order_items (order_id, product_id, quantity, price, total) VALUES `;
+  const values = cartItem.map((item) => {
+    return `(${orderId}, ${item.product_id}, ${item.quantity}, ${item.price}, ${item.total})`;
+  });
+
+  const [data] = await db.query(query + values.join(', '));
+  return data;
+};
+
+export const getOrderDetail = async (orderId) => {
+  const [data] = await db.query(
+    'SELECT * FROM order_items WHERE order_id = ?',
+    [orderId]
+  );
+  return data;
+};

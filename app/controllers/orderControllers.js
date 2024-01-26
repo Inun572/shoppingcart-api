@@ -5,7 +5,9 @@ import {
 import {
   createOrder,
   getOrderById,
+  getOrderDetail,
   getOrders,
+  insertOrderItem,
 } from '../services/orderServices.js';
 
 const orderControllers = {
@@ -28,9 +30,13 @@ const orderControllers = {
           });
         }
 
+        const orderItems = await getOrderDetail(orderId);
         res.json({
           message: 'Success get order',
-          data,
+          data: {
+            ...data,
+            items: orderItems,
+          },
         });
       } else {
         const data = await getOrders();
@@ -47,9 +53,9 @@ const orderControllers = {
         });
       }
     } catch (err) {
+      console.log(err);
       res.status(500).json({
         message: 'Internal server error',
-        error: err.message,
       });
     }
   },
@@ -57,7 +63,6 @@ const orderControllers = {
     try {
       const cartItem = await getCart();
       const orderDate = new Date();
-
       const orderNumber = 'ORD-' + Date.now();
       const total = cartItem.reduce((total, item) => {
         return total + item.total;
@@ -68,18 +73,30 @@ const orderControllers = {
         total
       );
 
-      if (data.affectedRows !== 0) {
+      const orderItems = await insertOrderItem(
+        data.insertId,
+        cartItem
+      );
+
+      if (
+        data.affectedRows !== 0 &&
+        orderItems.affectedRows !== 0
+      ) {
         await emptyCart();
       }
 
       res.json({
         message: 'Success create order',
-        data,
+        data: {
+          order_id: data.insertId,
+          total_items: cartItem.length,
+          total_price: total,
+        },
       });
     } catch (err) {
       res.status(500).json({
         message: 'Internal server error',
-        error: err.message,
+        error: err,
       });
     }
   },
